@@ -125,6 +125,17 @@ col1, col2 = st.columns([8, 1])
 with col1:
     st.title("Query Connect")
 
+with st.expander("You could try some of these prompts", expanded=True):
+    st.write(
+        """
+        - What kind of information is in this database?
+        - Which items have the highest return rates?
+        - How is inventory distributed across our regional distribution centers?
+        - How long do customers typically wait between orders?
+        - Are high-margin categories also high-volume sellers?
+    """
+    )
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
