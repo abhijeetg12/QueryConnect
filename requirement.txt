@@ -1,8 +1,0 @@
-google-cloud-aiplatform==1.68.0
-google-cloud-bigquery==3.26.0
-streamlit==1.38.0
-google-cloud-core>=2.3.3
-google-auth>=2.22.0
-google-auth-oauthlib>=1.0.0
-google-auth-httplib2>=0.1.0
-google-api-python-client>=2.97.0
