@@ -1,11 +1,19 @@
 import time
-
+import os 
+import json 
 from google.cloud import bigquery
 import streamlit as st
 from vertexai.generative_models import FunctionDeclaration, GenerativeModel, Part, Tool
 import vertexai
+from vertexai import init
 
+# GOOGLE_APPLICATION_CREDENTIALS = """{type = "service_account", project_id  = "formal-airway-439707-t6", private_key_id = "0f8f4c30769cee4b05632336e47397457fa75976",private_key = "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDsd4tm9F8SYZD/\n8BMdzshnNd95dwCxM8EAqWZUdPmvhk0iCY6hUKkEwyi4B+f6dDS+ec0VymjlBPa/\nfZH4qbktAYJnRZxOla8uz9WeGVWRqRUE1MbPbUBn5F2KhHVLuhzpKdv0hRkHctQ+\naXEdsj+HHALDCP8tT5FYnJLqWhCqD6sZJI/wL+1SOUiB4eOsHStBIFNthd7JPAYN\nIQpC2zZB7k9oqaZRemrhsbebqC/fY8TTnd5FY++qYZjqB2oGNdeWeGvCgUrdZjRT\neuQ9eXZtxkmQanwsCXZ6fyXcGa0OUydv0zqMzK9zPz4pijd7hy2rO3xIfS4xlYzw\nSYoDNg6BAgMBAAECggEAYgaso2FqiBQqJ+89/X1bVm3e1luezdbGi5+t7BUR7NGf\n6BxOJFFrv62nk6KzaAAEXXHgssfV9Bq6r2c+u/af7ShTBry0r18d4CoIRCH8dwXA\n0N/kCtkfefIRVPrUJTBiC8ZuiE8ksRHJKpZLbiQWccwK2Q9BuWbiufkubjgn8FcC\neNt3zD7zHmKkGB/n4IOo3jTdiT3YuItTgmMAZ4YR2yUJNSy6kesy/bao0LkXz3XJ\nrJ7YihebQrj9cLgEhHJM92jfXciKdMY4qOh56WsENgh7r4DJc900EEENGR1ZP2Jo\nha6y8ahc1sClXiMyu++H1WynyramhSjEjfLOa+MigQKBgQD2Ds3wCZCMXn3Hkuts\nvh+fqhz/jZE6ymsT3uJUajc5WGj3yFpKezbAlx4nshfJxysi7DHs5fxqbghugSN8\n0qA3teO/seX4hB3LF57ZgXDuKYXPxJw4omWMcDnym3l4+wFT5pDxQTJAjwIxKNku\nrr8zI24qxEWBZ9tJXZ6Xl9sXWwKBgQD2BYiFmE/HzKE/P7xE3xtO9uvZK2HGwxMr\nV6TnMrzGoAh3pKBSgJM5IhSOVcu4VQCcwVkzBbKNIQUJc4sTh38lqmaf8N8Wq77J\nR5vKCcgtfu5K1S+5ixXRfUGbVe+id3gL2KT03PxLUbfPgHXGeKHzPz3Q2A7OTCWE\nfVcnzX00UwKBgD1QhRral02TQk6YGthXLDQyRNWdpmH7DOG/ubCFY0uD72xHXdCP\nkZ4+SgJkS685VVN3fh1lVhgDYVCAF6LELa6UQbOEFiVubqosMaZLriN672BNwwwN\n07ZCRP5ipcty6OrKWrXzpB0YRdiQMEaEvxp0KsC3dgaAJdHLZXirG6pfAoGAcMxY\nq+gJrDHGPJmcWHdyreHIgOnDCr6mK1kj4l0A8JCvUSvJ1gnddnSJuDjeDsXqYfTE\nUQBrvQlGpe6z9WBKi5p1Mx/dKSfVcbPDWf7iKPnph6X3G7sJZeNoETB1jqf4AnZy\nK1Km2mG9RQZA+Z6VolF8piRppWyERxqwuy8cGMECgYAERmStdsvedSFpWzgaphEP\nuLo1shgzqAT1jLjSoO4M1wJzud586fcAxb5Ui3rOle0RHKcI5LhgYZ/F9qxKfA4R\nL2aoPWSyJ3C9nt5hHC8Bjb7Zb0Sq29bjv1I8RDW3ap+uL1kEZiTegIQpxAXFunQI\n0vnTTbXPGJUcWcaOPu/JdA==\n-----END PRIVATE KEY-----\n",client_email = "streamlit-access@formal-airway-439707-t6.iam.gserviceaccount.com",client_id = "102146647707152988018",auth_uri = "https://accounts.google.com/o/oauth2/auth",token_uri = "https://oauth2.googleapis.com/token",auth_provider_x509_cert_url = "https://www.googleapis.com/oauth2/v1/certs",client_x509_cert_url= "https://www.googleapis.com/robot/v1/metadata/x509/streamlit-access%40formal-airway-439707-t6.iam.gserviceaccount.com",universe_domain = "googleapis.com"}"""
+
+GOOGLE_APPLICATION_CREDENTIALS =json.loads(st.secrets["GOOGLE_APPLICATION_CREDENTIALS"]) # "bq-key.json"#
+# GCP_PROJECT_ID = st.secrets["project-id"]
 BIGQUERY_DATASET_ID = "thelook_ecommerce"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GOOGLE_APPLICATION_CREDENTIALS
+
 
 list_datasets_func = FunctionDeclaration(
     name="list_datasets",
