@@ -2,15 +2,43 @@ import time
 import os 
 import json 
 from google.cloud import bigquery
+from google.oauth2 import service_account
 import streamlit as st
 from vertexai.generative_models import FunctionDeclaration, GenerativeModel, Part, Tool
 import vertexai
 from vertexai import init
 
-GOOGLE_APPLICATION_CREDENTIALS =json.loads(st.secrets["GOOGLE_APPLICATION_CREDENTIALS"]) # "bq-key.json"#
-# GCP_PROJECT_ID = st.secrets["project-id"]
 BIGQUERY_DATASET_ID = "thelook_ecommerce"
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GOOGLE_APPLICATION_CREDENTIALS
+
+credentials_dict = {
+    "type": "service_account",
+    "project_id": st.secrets["gcp_project_id"],
+    "private_key_id": st.secrets["gcp_private_key_id"],
+    "private_key": st.secrets["gcp_private_key"],
+    "client_email": st.secrets["gcp_client_email"],
+    "client_id": st.secrets["gcp_client_id"],
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": st.secrets["client_x509_cert_url"]#f"https://www.googleapis.com/robot/v1/metadata/x509/{st.secrets['gcp_client_email']}"
+}
+credentials = service_account.Credentials.from_service_account_info(
+    credentials_dict
+)
+
+project_id = st.secrets["gcp_project_id"]
+
+vertexai.init(
+    project=project_id,
+    location="us-central1",  # Replace with your preferred location
+    credentials=credentials
+)
+
+# Initialize BigQuery client
+client = bigquery.Client(
+    credentials=credentials,
+    project=project_id
+)
 
 
 list_datasets_func = FunctionDeclaration(
@@ -118,7 +146,7 @@ if prompt := st.chat_input("Ask me about information in the database..."):
         message_placeholder = st.empty()
         full_response = ""
         chat = model.start_chat()
-        client = bigquery.Client()
+        client = bigquery.Client(credentials=credentials)
 
         prompt += """
             Please give a concise, high-level summary followed by detail in
