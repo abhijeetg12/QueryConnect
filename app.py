@@ -7,6 +7,11 @@ import streamlit as st
 from vertexai.generative_models import FunctionDeclaration, GenerativeModel, Part, Tool
 import vertexai
 from vertexai import init
+import plotly.graph_objects as go
+import plotly.express as px
+import pandas as pd
+from typing import Dict, List, Any
+import numpy as np
 
 BIGQUERY_DATASET_ID = "thelook_ecommerce"
 
@@ -86,29 +91,209 @@ get_table_func = FunctionDeclaration(
 
 sql_query_func = FunctionDeclaration(
     name="sql_query",
-    description="Get information from data in BigQuery using SQL queries",
+    description="Get information from data in BigQuery using SQL queries with proper date handling",
     parameters={
         "type": "object",
         "properties": {
             "query": {
                 "type": "string",
-                "description": "SQL query on a single line that will help give quantitative answers to the user's question when run on a BigQuery dataset and table. In the SQL query, always use the fully qualified dataset and table names.",
+                "description": """SQL query that will help give quantitative answers to the user's question. 
+                For date/time queries:
+                - Always use DATE() function to convert TIMESTAMP to DATE when comparing dates
+                - Use TIMESTAMP_TRUNC() for truncating timestamps to specific granularity
+                - Use DATETIME_SUB() or DATE_SUB() for date arithmetic
+                - Always use the fully qualified dataset and table names
+                Example date handling:
+                - For last N months: DATE(created_at) >= DATE_SUB(CURRENT_DATE(), INTERVAL N MONTH)
+                - For daily aggregation: DATE(created_at) as date
+                """,
             }
         },
-        "required": [
-            "query",
-        ],
+        "required": ["query"],
     },
 )
 
+analyze_table_func = FunctionDeclaration(
+    name="analyze_table",
+    description="Analyze a table's data distribution, quality issues, and key statistics",
+    parameters={
+        "type": "object",
+        "properties": {
+            "table_id": {
+                "type": "string",
+                "description": "Fully qualified ID of the table to analyze"
+            },
+            "analysis_type": {
+                "type": "string",
+                "enum": ["distribution", "quality", "relationships", "all"],
+                "description": "Type of analysis to perform"
+            }
+        },
+        "required": ["table_id", "analysis_type"]
+    }
+)
+
+generate_visualization_func = FunctionDeclaration(
+    name="generate_visualization",
+    description="Generate appropriate visualization based on query results",
+    parameters={
+        "type": "object",
+        "properties": {
+            "query_results": {
+                "type": "string",
+                "description": "JSON string of query results"
+            },
+            "viz_type": {
+                "type": "string",
+                "enum": ["time_series", "distribution", "correlation", "comparison", "geographic"],
+                "description": "Type of visualization to generate"
+            },
+            "title": {
+                "type": "string",
+                "description": "Title for the visualization"
+            }
+        },
+        "required": ["query_results", "viz_type", "title"]
+    }
+)
+
+data_quality_check_func = FunctionDeclaration(
+    name="check_data_quality",
+    description="Run data quality checks on specified columns",
+    parameters={
+        "type": "object",
+        "properties": {
+            "table_id": {
+                "type": "string",
+                "description": "Fully qualified ID of the table to check"
+            },
+            "columns": {
+                "type": "string",
+                "description": "Comma-separated list of columns to check"
+            }
+        },
+        "required": ["table_id", "columns"]
+    }
+)
+
+# Implementation of new functions
+def analyze_table(table_id: str, analysis_type: str) -> Dict[str, Any]:
+    """
+    Implement comprehensive table analysis
+    """
+    client = bigquery.Client(credentials=credentials)
+    
+    if analysis_type in ["distribution", "all"]:
+        # Get column distributions
+        query = f"""
+        SELECT column_name, 
+               COUNT(*) as total_rows,
+               COUNT(DISTINCT {column_name}) as distinct_values,
+               COUNT(CASE WHEN {column_name} IS NULL THEN 1 END) as null_count
+        FROM `{table_id}`
+        GROUP BY column_name
+        """
+        distribution_results = client.query(query).to_dataframe()
+    
+    if analysis_type in ["quality", "all"]:
+        # Check for data quality issues
+        query = f"""
+        SELECT COUNT(*) as total_rows,
+               COUNT(DISTINCT id) as distinct_ids,
+               COUNT(*) - COUNT(DISTINCT id) as duplicate_count
+        FROM `{table_id}`
+        """
+        quality_results = client.query(query).to_dataframe()
+    
+    return {
+        "distribution_analysis": distribution_results.to_dict() if "distribution" in analysis_type else None,
+        "quality_analysis": quality_results.to_dict() if "quality" in analysis_type else None
+    }
+
+def generate_visualization(query_results: str, viz_type: str, title: str) -> go.Figure:
+    """
+    Generate appropriate visualizations based on data characteristics
+    """
+    df = pd.DataFrame(eval(query_results))
+    
+    if viz_type == "time_series":
+        fig = px.line(df, x=df.columns[0], y=df.columns[1], title=title)
+    elif viz_type == "distribution":
+        fig = px.histogram(df, x=df.columns[0], title=title)
+    elif viz_type == "correlation":
+        fig = px.scatter(df, x=df.columns[0], y=df.columns[1], title=title)
+    elif viz_type == "comparison":
+        fig = px.bar(df, x=df.columns[0], y=df.columns[1], title=title)
+    elif viz_type == "geographic":
+        fig = px.scatter_mapbox(df, lat='latitude', lon='longitude', title=title)
+    
+    return fig
+
+def check_data_quality(table_id: str, columns: str) -> Dict[str, Any]:
+    """
+    Perform comprehensive data quality checks
+    """
+    client = bigquery.Client(credentials=credentials)
+    columns_list = [col.strip() for col in columns.split(",")]
+    
+    quality_checks = {}
+    for column in columns_list:
+        query = f"""
+        SELECT
+            COUNT(*) as total_rows,
+            COUNT(DISTINCT {column}) as unique_values,
+            COUNT(CASE WHEN {column} IS NULL THEN 1 END) as null_count,
+            COUNT(CASE WHEN TRIM({column}) = '' THEN 1 END) as empty_string_count
+        FROM `{table_id}`
+        """
+        results = client.query(query).to_dataframe()
+        quality_checks[column] = results.to_dict('records')[0]
+    
+    return quality_checks
+
+# Update the existing sql_query_tool
 sql_query_tool = Tool(
     function_declarations=[
         list_datasets_func,
         list_tables_func,
         get_table_func,
         sql_query_func,
-    ],
+        analyze_table_func,
+        generate_visualization_func,
+        data_quality_check_func
+    ]
 )
+
+# Helper function to determine appropriate visualization type
+def determine_visualization_type(query_results: List[Dict[str, Any]]) -> str:
+    df = pd.DataFrame(query_results)
+    
+    # Check for temporal data
+    temporal_columns = df.select_dtypes(include=['datetime64']).columns
+    if len(temporal_columns) > 0:
+        return "time_series"
+    
+    # Check for geographic data
+    if all(col in df.columns for col in ['latitude', 'longitude']):
+        return "geographic"
+    
+    # Check for categorical vs numerical data
+    numerical_columns = df.select_dtypes(include=[np.number]).columns
+    if len(numerical_columns) >= 2:
+        return "correlation"
+    elif len(numerical_columns) == 1:
+        return "distribution"
+    
+    return "comparison"
+
+# sql_query_tool = Tool(
+#     function_declarations=[
+#         list_datasets_func,
+#         list_tables_func,
+#         get_table_func,
+#         sql_query_func,
+#     ],
+# )
 
 model = GenerativeModel(
     "gemini-1.5-pro",
