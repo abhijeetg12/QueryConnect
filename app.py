@@ -301,26 +301,83 @@ model = GenerativeModel(
     tools=[sql_query_tool],
 )
 
+
 st.set_page_config(
     page_title="Query Connect",
     layout="wide",
 )
 
+# Title section
 col1, col2 = st.columns([8, 1])
 with col1:
     st.title("Query Connect")
 
-with st.expander("You could try some of these prompts", expanded=True):
-    st.write(
-        """
-        - What kind of information is in this database?
-        - Which items have the highest return rates?
-        - How is inventory distributed across our regional distribution centers?
-        - How long do customers typically wait between orders?
-        - Are high-margin categories also high-volume sellers?
-    """
-    )
+# New Dataset Introduction Section
+st.markdown("### 📊 TheLook Ecommerce Dataset Explorer")
 
+tab1, tab2, tab3 = st.tabs(["Dataset Overview", "Available Data", "Example Questions"])
+
+with tab1:
+    st.markdown("""
+        Explore a comprehensive ecommerce dataset containing detailed information about:
+        
+        | Category | Description |
+        |----------|-------------|
+        | 🛍️ Products & Orders | Complete order history and product details |
+        | 👥 Customer Behavior | Customer demographics and purchase patterns |
+        | 📈 Sales Metrics | Revenue, margins, and performance indicators |
+        | 🔍 Product Analytics | Categories, attributes, and inventory data |
+    """)
+
+with tab2:
+    st.markdown("#### Key Tables Available")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+            **Core Business Data**
+            - `orders`: Order details, timestamps, and status
+            - `order_items`: Individual items in each order
+            - `products`: Product catalog with categories and costs
+        """)
+    
+    with col2:
+        st.markdown("""
+            **Supporting Data**
+            - `users`: Customer demographics and details
+            - `inventory_items`: Stock levels and distribution
+            - `distribution_centers`: Warehouse locations
+        """)
+
+with tab3:
+    st.markdown("#### Try These Example Questions")
+    
+    with st.expander("📊 Business Performance", expanded=True):
+        st.markdown("""
+            - What were our top-selling products last month?
+            - How does revenue compare across different product categories?
+            - What's our average order value trend over time?
+        """)
+    
+    with st.expander("👥 Customer Insights", expanded=True):
+        st.markdown("""
+            - What's the average customer lifetime value by region?
+            - Which customer segments have the highest repeat purchase rate?
+            - How does customer age affect product preferences?
+        """)
+    
+    with st.expander("📦 Operations & Inventory", expanded=True):
+        st.markdown("""
+            - Which distribution centers are running low on stock?
+            - What's our average processing time for orders?
+            - Which products have the highest return rates?
+        """)
+
+# Add a visual separator
+st.markdown("---")
+
+# Chat interface
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
